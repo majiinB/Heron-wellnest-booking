@@ -752,6 +752,7 @@ router.patch('/requests/:requestId/decline', heronAuthMiddleware, asyncHandler(s
  *                   message: Internal server error
  */
 router.get('/requests/', heronAuthMiddleware, asyncHandler(studentBookingController.getAllAppointmentRequests.bind(studentBookingController)));
+
 router.get('/requests/:requestId', heronAuthMiddleware, asyncHandler(studentBookingController.getAppointmentRequests.bind(studentBookingController)));
 
 
@@ -923,7 +924,322 @@ router.get('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(stu
 router.delete('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(studentBookingController.cancelAppointment.bind(studentBookingController)));
 
 // Availability routes
+/**
+ * @openapi
+ * /availability/counselor/{counselorId}:
+ *   get:
+ *     summary: Retrieve a counselor's unavailable time slots (student)
+ *     description: |
+ *       Allows an authenticated **student** to view a counselor’s **unavailable time slots** within a given date range.  
+ *       The request requires both `startDate` and `endDate` in ISO 8601 format.
+ *     tags:
+ *       - Booking / Student
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: counselorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         example: c5e4f2bf-af11-489a-99cf-0954c3f9f3f7
+ *         description: The unique identifier of the counselor.
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-01T00:00:00Z
+ *         description: The start date (inclusive) for filtering unavailable slots.
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-30T23:59:59Z
+ *         description: The end date (inclusive) for filtering unavailable slots.
+ *     responses:
+ *       '200':
+ *         description: Unavailable time slots retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 code:
+ *                   type: string
+ *                   example: UNAVAILABLE_SLOTS_RETRIEVED
+ *                 message:
+ *                   type: string
+ *                   example: Counselor unavailable time slots retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       start:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-15T09:00:00.000Z
+ *                       end:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-15T10:00:00.000Z
+ *                       agenda:
+ *                         type: string
+ *                         example: event
+ *                       student_email:
+ *                         type: string
+ *                         format: email
+ *                         nullable: true
+ *                         example: student@heron.edu.ph
+ *       '400':
+ *         description: Bad request — missing or invalid parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: BAD_REQUEST
+ *                 message:
+ *                   type: string
+ *                   example: Start date and end date are required.
+ *       '401':
+ *         description: Unauthorized — user authentication required.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED
+ *                 message:
+ *                   type: string
+ *                   example: User authentication required.
+ *       '403':
+ *         description: Forbidden — only students can access this endpoint.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: FORBIDDEN
+ *                 message:
+ *                   type: string
+ *                   example: Only students can view counselor availability.
+ *       '500':
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_SERVER_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error.
+ *     examples:
+ *       success:
+ *         value:
+ *           success: true
+ *           code: UNAVAILABLE_SLOTS_RETRIEVED
+ *           message: Counselor unavailable time slots retrieved successfully.
+ *           data:
+ *             - start: "2025-11-15T09:00:00.000Z"
+ *               end: "2025-11-15T10:00:00.000Z"
+ *               agenda: "event"
+ *             - start: "2025-11-20T13:30:00.000Z"
+ *               end: "2025-11-20T14:30:00.000Z"
+ *               agenda: "meeting"
+ */
 router.get('/availability/counselor/:counselorId', heronAuthMiddleware, asyncHandler(studentBookingController.getCounselorUnavailableSlots.bind(studentBookingController)));
+
+/**
+ * @openapi
+ * /availability/department:
+ *   get:
+ *     summary: Retrieve department-wide available time slots (student)
+ *     description: |
+ *       Allows an authenticated **student** to view their department's **available time slots** for counseling within a given date range.  
+ *       The department is automatically determined from the authenticated student's account.  
+ *       Optional parameters can adjust slot duration and working hours.
+ *     tags:
+ *       - Booking / Student
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-01T00:00:00Z
+ *         description: The start date (inclusive) for generating available slots.
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-07T23:59:59Z
+ *         description: The end date (inclusive) for generating available slots.
+ *       - in: query
+ *         name: slotDuration
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 60
+ *         description: Slot duration in minutes (default is 60).
+ *       - in: query
+ *         name: workStartHour
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 9
+ *         description: The hour (0–23) marking the start of the working day (default is 9).
+ *       - in: query
+ *         name: workEndHour
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 17
+ *         description: The hour (0–24) marking the end of the working day (default is 17).
+ *     responses:
+ *       '200':
+ *         description: Department available time slots retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 code:
+ *                   type: string
+ *                   example: AVAILABLE_SLOTS_RETRIEVED
+ *                 message:
+ *                   type: string
+ *                   example: Department available time slots retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       start:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-03T01:00:00.000Z
+ *                       end:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-03T02:00:00.000Z
+ *       '400':
+ *         description: Bad request — missing or invalid parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: BAD_REQUEST
+ *                 message:
+ *                   type: string
+ *                   example: Start date and end date are required.
+ *       '401':
+ *         description: Unauthorized — user authentication required.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED
+ *                 message:
+ *                   type: string
+ *                   example: User authentication required.
+ *       '403':
+ *         description: Forbidden — only students can access this endpoint.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: FORBIDDEN
+ *                 message:
+ *                   type: string
+ *                   example: Only students can view department availability.
+ *       '500':
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_SERVER_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error.
+ *     examples:
+ *       success:
+ *         value:
+ *           success: true
+ *           code: AVAILABLE_SLOTS_RETRIEVED
+ *           message: Department available time slots retrieved successfully.
+ *           data:
+ *             - start: "2025-11-03T01:00:00.000Z"
+ *               end: "2025-11-03T02:00:00.000Z"
+ *             - start: "2025-11-03T02:00:00.000Z"
+ *               end: "2025-11-03T03:00:00.000Z"
+ *             - start: "2025-11-03T03:00:00.000Z"
+ *               end: "2025-11-03T04:00:00.000Z"
+ *             - start: "2025-11-04T01:00:00.000Z"
+ *               end: "2025-11-04T02:00:00.000Z"
+ */
 router.get('/availability/department/', heronAuthMiddleware, asyncHandler(studentBookingController.getDepartmentAvailableSlots.bind(studentBookingController)));
 
 export default router;

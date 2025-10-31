@@ -75,6 +75,7 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use(cors(corsOptions));
 app.use(express.json()); 
 app.use(loggerMiddleware); // Custom logger middleware
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
 // This is a health check route

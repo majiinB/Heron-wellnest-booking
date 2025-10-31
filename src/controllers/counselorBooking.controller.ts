@@ -2,6 +2,7 @@ import { type NextFunction, type Response } from "express";
 import type { CounselorBookingService } from "../services/counselorBooking.service.js";
 import type { AuthenticatedRequest } from "../interface/authRequest.interface.js";
 import type { ApiResponse } from "../types/apiResponse.type.js";
+import { validate as isUuid } from "uuid";
 
 export class CounselorBookingController {
   private counselorBookingService: CounselorBookingService;
@@ -48,7 +49,7 @@ export class CounselorBookingController {
   public async requestAppointment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const userId = req.user?.sub;
     const role = req.user?.role;
-    const { agenda, counselorId, proposedStart, proposedEnd } = req.body || {};
+    const { agenda, studentId, proposedStart, proposedEnd } = req.body || {};
     let response: ApiResponse;
 
     if (!userId) {
@@ -66,9 +67,15 @@ export class CounselorBookingController {
       res.status(400).json(response); return;
     }
 
-    if (!counselorId) {
-      response = { success: false, code: "MISSING_COUNSELOR_ID", message: "Counselor ID is required." };
+    if (!studentId) {
+      response = { success: false, code: "MISSING_STUDENT_ID", message: "Student ID is required." };
       res.status(400).json(response); return;
+    }
+
+    if (!isUuid(studentId)) {
+      response = {success: false, code: "INVALID_STUDENT_ID", message: "Student ID must be a valid UUID."};
+      res.status(400).json(response);
+      return;
     }
 
     if (!proposedStart) {
@@ -98,7 +105,7 @@ export class CounselorBookingController {
     }
 
     const appointmentRequestData = await this.counselorBookingService.requestAppointment(
-      userId, agenda, counselorId, startDate, endDate
+      userId, agenda, studentId, startDate, endDate
     );
     response = { success: true, code: "APPOINTMENT_REQUESTED", message: "Appointment request created successfully.", data: appointmentRequestData };
     res.status(201).json(response);

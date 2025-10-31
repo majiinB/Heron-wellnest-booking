@@ -6,6 +6,7 @@ import { calendarClient } from "../config/googleCalendar.config.js";
 import { google } from "googleapis";
 import type { AuthenticatedRequest } from "../interface/authRequest.interface.js";
 import type { ApiResponse } from "../types/apiResponse.type.js";
+import { validate as isUuid } from "uuid";
 
 interface PubSubMessage {
   message: {
@@ -84,11 +85,11 @@ export class StudentBookingController {
       return;
     }
 
-    if (!counselorId) {
+    if (!isUuid(counselorId)) {
       response = {
         success: false,
-        code: "MISSING_COUNSELOR_ID",
-        message: "Counselor ID is required."
+        code: "INVALID_COUNSELOR_ID",
+        message: "Counselor ID must be a valid UUID."
       };
       res.status(400).json(response);
       return;

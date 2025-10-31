@@ -124,6 +124,22 @@ export class StudentBookingService {
       );
     }
 
+    // Check if the appointment request already exists
+    const existingRequests = await this.appointmentRequestsRepository.findRequestsByStudentAndTime(
+      userId,
+      proposedStart,
+      proposedEnd,
+      agenda
+    );
+    if (existingRequests.length > 0) {
+      throw new AppError(
+        409,
+        "DUPLICATE_REQUEST",
+        "An appointment request with the same details already exists.",
+        true
+      );
+    }
+
     // Get student details including department
     const studentDetails = await this.studentRepository.getStudentDetails(userId);
     

@@ -111,6 +111,88 @@ export class AppointmentRequestRepository {
   }
 
   /**
+   * Finds appointment requests by student and exact proposed time range.
+   * Optionally filter by agenda and counselor_id. Excludes declined/expired requests
+   * so it can be used to detect duplicate or overlapping requests that are still active.
+   *
+   * @param student_id - the student's id
+   * @param proposed_start - proposed start Date
+   * @param proposed_end - proposed end Date
+   * @param agenda - optional agenda filter
+   * @param counselor_id - optional counselor id filter
+   * @returns promise resolving to an array of matching AppointmentRequest
+   */
+  async findRequestsByStudentAndTime(
+    student_id: string,
+    proposed_start: Date,
+    proposed_end: Date,
+    agenda?: "counseling" | "meeting" | "routine_interview" | "event",
+    counselor_id?: string
+  ): Promise<AppointmentRequest[]> {
+    // Build query to match exact proposed start/end and student
+    const qb = this.repository.createQueryBuilder('ar')
+      .where('ar.student_id = :student_id', { student_id })
+      .andWhere('ar.proposed_start = :proposed_start', { proposed_start })
+      .andWhere('ar.proposed_end = :proposed_end', { proposed_end })
+      // ignore requests that were declined or expired
+      .andWhere('ar.status NOT IN (:...excluded)', { excluded: ['declined', 'expired'] });
+
+    if (agenda) {
+      qb.andWhere('ar.agenda = :agenda', { agenda });
+    }
+
+    if (counselor_id) {
+      qb.andWhere('ar.counselor_id = :counselor_id', { counselor_id });
+    }
+
+    qb.orderBy('ar.created_at', 'DESC');
+
+    const results = await qb.getMany();
+    return results;
+  }
+
+  /**
+   * Finds appointment requests by counselor and exact proposed time range.
+   * Optionally filter by agenda and student_id. Excludes declined/expired requests
+   * so it can be used to detect duplicate or overlapping requests that are still active.
+   *
+   * @param counselor_id - the counselor's id
+   * @param proposed_start - proposed start Date
+   * @param proposed_end - proposed end Date
+   * @param agenda - optional agenda filter
+   * @param student_id - optional student id filter
+   * @returns promise resolving to an array of matching AppointmentRequest
+   */
+  async findRequestsByCounselorAndTime(
+    counselor_id: string,
+    proposed_start: Date,
+    proposed_end: Date,
+    agenda?: "counseling" | "meeting" | "routine_interview" | "event",
+    student_id?: string
+  ): Promise<AppointmentRequest[]> {
+    // Build query to match exact proposed start/end and counselor
+    const qb = this.repository.createQueryBuilder('ar')
+      .where('ar.counselor_id = :counselor_id', { counselor_id })
+      .andWhere('ar.proposed_start = :proposed_start', { proposed_start })
+      .andWhere('ar.proposed_end = :proposed_end', { proposed_end })
+      // ignore requests that were declined or expired
+      .andWhere('ar.status NOT IN (:...excluded)', { excluded: ['declined', 'expired'] });
+
+    if (agenda) {
+      qb.andWhere('ar.agenda = :agenda', { agenda });
+    }
+
+    if (student_id) {
+      qb.andWhere('ar.student_id = :student_id', { student_id });
+    }
+
+    qb.orderBy('ar.created_at', 'DESC');
+
+    const results = await qb.getMany();
+    return results;
+  }
+
+  /**
    * Updates the student's response to an appointment request.
    * Automatically updates the overall status based on both responses.
    * 

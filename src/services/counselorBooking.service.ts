@@ -129,6 +129,22 @@ export class CounselorBookingService {
       );
     }
 
+    // Check if the appointment request already exists
+    const existingRequests = await this.appointmentRequestsRepository.findRequestsByCounselorAndTime(
+      userId,
+      proposedStart,
+      proposedEnd,
+      agenda
+    );
+    if (existingRequests.length > 0) {
+      throw new AppError(
+        409,
+        "DUPLICATE_REQUEST",
+        "An appointment request with the same details already exists.",
+        true
+      );
+    }
+
     // Get counselor details including department
     const counselorDetails = await this.counselorRepository.getCounselorDetails(userId);
     

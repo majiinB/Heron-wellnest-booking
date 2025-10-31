@@ -27,7 +27,7 @@ import cors from 'cors';
 import {corsOptions} from './config/cors.config.js'; 
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
-import bookingRouter from './routes/booking.route.js'
+import studentBookingRouter from './routes/studentBooking.route.js'
 
 
 const app : express.Express = express();
@@ -42,7 +42,7 @@ app.use(loggerMiddleware); // Custom logger middleware
 app.get('/api/v1/student/booking/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-app.use('/api/v1/student/booking', bookingRouter);
+app.use('/api/v1/student/booking', studentBookingRouter);
 
 
 app.use(errorMiddleware); // Custom error handling middleware

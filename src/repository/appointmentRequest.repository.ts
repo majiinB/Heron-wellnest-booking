@@ -1,4 +1,4 @@
-import { Between, Repository } from "typeorm";
+import { Between, EntityManager, Repository } from "typeorm";
 import { AppDataSource } from "../config/datasource.config.js";
 import { AppointmentRequest } from "../models/appointmentRequests.model.js";
 
@@ -206,7 +206,32 @@ export class AppointmentRequestRepository {
    * const request = await repo.updateStudentResponse(requestId, "accepted");
    * ```
    */
-  async updateStudentResponse(
+  async updateStudentResponseWithManager(
+  manager: EntityManager,
+  request_id: string,
+  response: "accepted" | "declined"
+): Promise<AppointmentRequest | null> {
+  const repo = manager.getRepository(AppointmentRequest);
+  const request = await repo.findOne({ where: { request_id } });
+
+  if (!request) {
+    return null;
+  }
+
+  request.student_response = response;
+
+  // Update overall status based on both responses
+  if (response === "declined") {
+    request.status = "declined";
+    request.finalized_at = new Date();
+  } else if (request.counselor_response === "accepted") {
+    request.status = "both_confirmed";
+    request.finalized_at = new Date();
+  }
+
+  return await repo.save(request);
+}
+async updateStudentResponse(
     request_id: string,
     response: "accepted" | "declined"
   ): Promise<AppointmentRequest | null> {
@@ -230,6 +255,7 @@ export class AppointmentRequestRepository {
     return await this.repository.save(request);
   }
 
+
   /**
    * Updates the counselor's response to an appointment request.
    * Automatically updates the overall status based on both responses.
@@ -244,7 +270,32 @@ export class AppointmentRequestRepository {
    * const request = await repo.updateCounselorResponse(requestId, "accepted");
    * ```
    */
-  async updateCounselorResponse(
+  async updateCounselorResponseWithManager(
+  manager: EntityManager,
+  request_id: string,
+  response: "accepted" | "declined"
+): Promise<AppointmentRequest | null> {
+  const repo = manager.getRepository(AppointmentRequest);
+  const request = await repo.findOne({ where: { request_id } });
+
+  if (!request) {
+    return null;
+  }
+
+  request.counselor_response = response;
+
+  // Update overall status based on both responses
+  if (response === "declined") {
+    request.status = "declined";
+    request.finalized_at = new Date();
+  } else if (request.student_response === "accepted") {
+    request.status = "both_confirmed";
+    request.finalized_at = new Date();
+  }
+
+  return await repo.save(request);
+}
+async updateCounselorResponse(
     request_id: string,
     response: "accepted" | "declined"
   ): Promise<AppointmentRequest | null> {
@@ -267,6 +318,7 @@ export class AppointmentRequestRepository {
 
     return await this.repository.save(request);
   }
+
 
   /**
    * Updates the status of an appointment request.

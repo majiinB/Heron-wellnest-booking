@@ -38,7 +38,7 @@ export class Appointment {
 
   @OneToOne(() => AppointmentRequest, { onDelete: "CASCADE" })
   @JoinColumn({ name: "request_id" })
-  request_id!: AppointmentRequest;
+  request!: AppointmentRequest;
 
   @Column({ type: "uuid" })
   student_id!: string;

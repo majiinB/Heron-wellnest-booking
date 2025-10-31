@@ -11,6 +11,8 @@ import { AppDataSource } from "../config/datasource.config.js";
 import { calendarClient } from "../config/googleCalendar.config.js";
 import { logger } from "../utils/logger.util.js";
 
+type AppointmentResponse = Appointment & { request_id: string };
+
 /**
  * Service class for managing Booking.
  *
@@ -315,27 +317,12 @@ export class StudentBookingService {
       );
     }
 
-    // If both counselor and student is already accepted, finalize the request
-    const updatedRequest = await this.appointmentRequestsRepository.updateStudentResponse(
-      requestId,
-      "accepted"
-    );
-
-    if (!updatedRequest) {
-      throw new AppError(
-        500,
-        "REQUEST_UPDATE_FAILED",
-        "Failed to update the appointment request status.",
-        true
-      );
-    }
-
     let appointment: Appointment | null = null;
 
-    if(updatedRequest.counselor_response === "accepted" && updatedRequest.student_response === "accepted") {
+    if (appointmentRequest.counselor_response === "accepted") {
       // Get user details first (before any database writes)
-      const studentDetails = await this.studentRepository.getStudentDetails(updatedRequest.student_id);
-      const counselorDetails = await this.counselorRepository.getCounselorDetails(updatedRequest.counselor_id);
+      const studentDetails = await this.studentRepository.getStudentDetails(appointmentRequest.student_id);
+      const counselorDetails = await this.counselorRepository.getCounselorDetails(appointmentRequest.counselor_id);
       if (!studentDetails || !counselorDetails) {
         throw new AppError(
           500,
@@ -351,6 +338,22 @@ export class StudentBookingService {
       await queryRunner.startTransaction();
 
       try {
+        // Update the student's response to accepted within the transaction
+        const updatedRequest = await this.appointmentRequestsRepository.updateStudentResponseWithManager(
+          queryRunner.manager,
+          requestId,
+          "accepted"
+        );
+        
+        if (!updatedRequest) {
+          throw new AppError(
+            500,
+            "REQUEST_UPDATE_FAILED",
+            "Failed to update the appointment request status.",
+            true
+          );
+        }
+
         // Within transaction: Re-check availability to prevent race condition
         const isStillAvailableInDb = await this.appointmentsRepository.isTimeSlotAvailable(
           updatedRequest.counselor_id,
@@ -368,15 +371,19 @@ export class StudentBookingService {
         }
 
         // Create appointment within transaction
-        appointment = await this.appointmentsRepository.createAppointment({
-          request_id: updatedRequest,
-          student_id: updatedRequest.student_id,
-          counselor_id: updatedRequest.counselor_id,
-          department: updatedRequest.department,
-          agenda: updatedRequest.agenda,
-          start_time: updatedRequest.proposed_start,
-          end_time: updatedRequest.proposed_end
-        });
+        appointment = await this.appointmentsRepository.createAppointmentWithManager(
+          queryRunner.manager,
+          {
+            request: updatedRequest,
+            student_id: updatedRequest.student_id,
+            counselor_id: updatedRequest.counselor_id,
+            department: updatedRequest.department,
+            agenda: updatedRequest.agenda,
+            start_time: updatedRequest.proposed_start,
+            end_time: updatedRequest.proposed_end,
+          }
+        );
+
 
         // Try to create Google Calendar event
         const eventData: CalendarEventData = {
@@ -404,15 +411,22 @@ export class StudentBookingService {
         }
 
         // Update the appointment with the Google Calendar event ID
-        await this.appointmentsRepository.updateGoogleEventId(
+        await this.appointmentsRepository.updateGoogleEventIdWithManager(
+          queryRunner.manager,
           appointment.appointment_id,
           googleCalendarEvent.id
         );
 
         // Commit transaction - all operations succeeded
         await queryRunner.commitTransaction();
+        
+        const { request, ...rest } = appointment;
+        return {
+          ...rest,
+          request_id: request.request_id,
+          google_event_id: googleCalendarEvent.id
+        } as AppointmentResponse;
 
-        return appointment;
       } catch (error) {
         // Rollback transaction on any error
         await queryRunner.rollbackTransaction();

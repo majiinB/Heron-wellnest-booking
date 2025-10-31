@@ -1,4 +1,4 @@
-import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
+import { Between, EntityManager, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { AppDataSource } from "../config/datasource.config.js";
 import { Appointment } from "../models/appointments.model.js";
 import type { App } from "supertest/types.js";
@@ -53,8 +53,10 @@ export class AppointmentRepository {
    * });
    * ```
    */
-  async createAppointment(data: {
-    request_id: AppointmentRequest; // AppointmentRequest entity or ID
+  async createAppointmentWithManager(
+  manager: EntityManager,
+  data: {
+    request: AppointmentRequest;
     student_id: string;
     counselor_id: string;
     department: string;
@@ -62,15 +64,17 @@ export class AppointmentRepository {
     start_time: Date;
     end_time: Date;
     google_event_id?: string;
-  }): Promise<Appointment> {
-    const appointment = this.repository.create({
-      ...data,
-      status: "both_confirmed",
-      google_event_id: data.google_event_id || null
-    });
-
-    return await this.repository.save(appointment);
   }
+): Promise<Appointment> {
+  const appointment = manager.create(Appointment, {
+    ...data,
+    status: "both_confirmed",
+    google_event_id: data.google_event_id || null,
+  });
+
+  return await manager.save(appointment);
+}
+
 
   /**
    * Retrieves a single appointment by ID.
@@ -371,6 +375,23 @@ export class AppointmentRepository {
     appointment.google_event_id = google_event_id;
     return await this.repository.save(appointment);
   }
+
+  async updateGoogleEventIdWithManager(
+  manager: EntityManager,
+  appointment_id: string,
+  google_event_id: string
+): Promise<Appointment | null> {
+  const repo = manager.getRepository(Appointment);
+  const appointment = await repo.findOne({ where: { appointment_id } });
+
+  if (!appointment) {
+    return null;
+  }
+
+  appointment.google_event_id = google_event_id;
+  return await repo.save(appointment);
+}
+
 
   /**
    * Updates the time of an appointment.

@@ -11,6 +11,8 @@ import { AppDataSource } from "../config/datasource.config.js";
 import { calendarClient } from "../config/googleCalendar.config.js";
 import { logger } from "../utils/logger.util.js";
 
+type AppointmentResponse = Appointment & { request_id: string };
+
 /**
  * Service class for managing Counselor Booking operations.
  *
@@ -322,28 +324,13 @@ export class CounselorBookingService {
       );
     }
 
-    // Update counselor response to accepted
-    const updatedRequest = await this.appointmentRequestsRepository.updateCounselorResponse(
-      requestId,
-      "accepted"
-    );
-
-    if (!updatedRequest) {
-      throw new AppError(
-        500,
-        "REQUEST_UPDATE_FAILED",
-        "Failed to update the appointment request status.",
-        true
-      );
-    }
-
     let appointment: Appointment | null = null;
 
     // If both counselor and student have accepted, finalize the request
-    if(updatedRequest.counselor_response === "accepted" && updatedRequest.student_response === "accepted") {
+    if (appointmentRequest.student_response === "accepted") {
       // Get user details first (before any database writes)
-      const studentDetails = await this.studentRepository.getStudentDetails(updatedRequest.student_id);
-      const counselorDetails = await this.counselorRepository.getCounselorDetails(updatedRequest.counselor_id);
+      const studentDetails = await this.studentRepository.getStudentDetails(appointmentRequest.student_id);
+      const counselorDetails = await this.counselorRepository.getCounselorDetails(appointmentRequest.counselor_id);
       if (!studentDetails || !counselorDetails) {
         throw new AppError(
           500,
@@ -359,6 +346,22 @@ export class CounselorBookingService {
       await queryRunner.startTransaction();
 
       try {
+        // Update counselor response to accepted
+        const updatedRequest = await this.appointmentRequestsRepository.updateCounselorResponseWithManager(
+          queryRunner.manager,
+          requestId,
+          "accepted"
+        );
+
+        if (!updatedRequest) {
+          throw new AppError(
+            500,
+            "REQUEST_UPDATE_FAILED",
+            "Failed to update the appointment request status.",
+            true
+          );
+        }
+
         // Within transaction: Re-check availability to prevent race condition
         const isStillAvailableInDb = await this.appointmentsRepository.isTimeSlotAvailable(
           updatedRequest.counselor_id,
@@ -376,8 +379,10 @@ export class CounselorBookingService {
         }
 
         // Create appointment within transaction
-        appointment = await this.appointmentsRepository.createAppointment({
-          request_id: updatedRequest,
+        appointment = await this.appointmentsRepository.createAppointmentWithManager(
+          queryRunner.manager, 
+          {
+          request: updatedRequest,
           student_id: updatedRequest.student_id,
           counselor_id: updatedRequest.counselor_id,
           department: updatedRequest.department,
@@ -411,7 +416,8 @@ export class CounselorBookingService {
         }
 
         // Update the appointment with the Google Calendar event ID
-        await this.appointmentsRepository.updateGoogleEventId(
+        await this.appointmentsRepository.updateGoogleEventIdWithManager(
+          queryRunner.manager,
           appointment.appointment_id,
           googleCalendarEvent.id
         );
@@ -419,7 +425,12 @@ export class CounselorBookingService {
         // Commit transaction - all operations succeeded
         await queryRunner.commitTransaction();
 
-        return appointment;
+        const { request, ...rest } = appointment;
+        return {
+          ...rest,
+          request_id: request.request_id,
+          google_event_id: googleCalendarEvent.id
+        } as AppointmentResponse;
       } catch (error) {
         // Rollback transaction on any error
         await queryRunner.rollbackTransaction();

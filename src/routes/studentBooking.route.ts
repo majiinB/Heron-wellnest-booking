@@ -924,6 +924,6 @@ router.delete('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(
 
 // Availability routes
 router.get('/availability/counselor/:counselorId', heronAuthMiddleware, asyncHandler(studentBookingController.getCounselorUnavailableSlots.bind(studentBookingController)));
-router.get('/availability/department/:department', heronAuthMiddleware, asyncHandler(studentBookingController.getDepartmentAvailableSlots.bind(studentBookingController)));
+router.get('/availability/department/', heronAuthMiddleware, asyncHandler(studentBookingController.getDepartmentAvailableSlots.bind(studentBookingController)));
 
 export default router;

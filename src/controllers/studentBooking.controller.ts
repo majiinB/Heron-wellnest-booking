@@ -633,6 +633,7 @@ export class StudentBookingController {
 
     let response: ApiResponse;
 
+    logger.info(`Department from token: ${department}`);
     if (!userId) {
       response = {
         success: false,
@@ -692,6 +693,16 @@ export class StudentBookingController {
         success: false,
         code: "INVALID_END",
         message: "End date must be a valid ISO 8601 date string (e.g., 2025-11-01T11:00:00Z)"
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    if (parseEndDate <= parseStartDate) {
+      response = {
+        success: false,
+        code: "INVALID_DATE_RANGE",
+        message: "End date must be after start date."
       };
       res.status(400).json(response);
       return;

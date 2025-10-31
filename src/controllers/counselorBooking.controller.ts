@@ -315,7 +315,6 @@ export class CounselorBookingController {
   public async getCounselorUnavailableSlots(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const userId = req.user?.sub;
     const userRole = req.user?.role;
-    const { counselorId } = req.params;
     const { startDate, endDate } = req.query;
 
     let response: ApiResponse;
@@ -328,11 +327,6 @@ export class CounselorBookingController {
     if (userRole !== "counselor") {
       response = { success: false, code: "FORBIDDEN", message: "Only counselors can view counselor availability." };
       res.status(403).json(response); return;
-    }
-
-    if (!counselorId) {
-      response = { success: false, code: "MISSING_COUNSELOR_ID", message: "Counselor ID is required." };
-      res.status(400).json(response); return;
     }
 
     if (!startDate || !endDate) {
@@ -352,8 +346,18 @@ export class CounselorBookingController {
       res.status(400).json(response); return;
     }
 
+    if (parseEndDate <= parseStartDate) {
+      response = {
+        success: false,
+        code: "INVALID_DATE_RANGE",
+        message: "End date must be after start date."
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     const unavailableSlots = await this.counselorBookingService.getCounselorUnavailableSlots(
-      counselorId, parseStartDate, parseEndDate
+      userId, parseStartDate, parseEndDate
     );
 
     response = { success: true, code: "UNAVAILABLE_SLOTS_RETRIEVED", message: "Counselor unavailable time slots retrieved successfully.", data: unavailableSlots };
@@ -400,9 +404,19 @@ export class CounselorBookingController {
       res.status(400).json(response); return;
     }
 
+    if (parseEndDate <= parseStartDate) {
+      response = {
+        success: false,
+        code: "INVALID_DATE_RANGE",
+        message: "End date must be after start date."
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     const slotDurationMinutes = slotDuration ? parseInt(slotDuration as string, 10) : 60;
-    const workStart = workStartHour ? parseInt(workStartHour as string, 10) : 9;
-    const workEnd = workEndHour ? parseInt(workEndHour as string, 10) : 17;
+    const workStart = workStartHour ? parseInt(workStartHour as string, 10) : 9; // Default to 9 AM
+    const workEnd = workEndHour ? parseInt(workEndHour as string, 10) : 17; // Default to 5 PM
 
     if (isNaN(slotDurationMinutes) || slotDurationMinutes <= 0) {
       response = { success: false, code: "INVALID_SLOT_DURATION", message: "Slot duration must be a positive number (in minutes)." };

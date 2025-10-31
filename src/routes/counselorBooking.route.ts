@@ -913,7 +913,241 @@ router.get('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(cou
 router.delete('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(counselorBookingController.cancelAppointment.bind(counselorBookingController)));
 
 // Availability routes
-router.get('/availability/counselor/:counselorId', heronAuthMiddleware, asyncHandler(counselorBookingController.getCounselorUnavailableSlots.bind(counselorBookingController)));
-router.get('/availability/department/:department', heronAuthMiddleware, asyncHandler(counselorBookingController.getDepartmentAvailableSlots.bind(counselorBookingController)));
+/**
+ * @openapi
+ * /counselor/availability/:
+ *   get:
+ *     summary: Retrieve counselor unavailable time slots
+ *     description: |
+ *       Allows an authenticated counselor to view their **unavailable time slots** (based on confirmed appointments)
+ *       within a specific date range. The request must include both a `startDate` and an `endDate` as ISO 8601 date strings.
+ *     tags:
+ *       - Booking / Counselor
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-01T00:00:00Z
+ *         description: The start date (inclusive) for filtering unavailable time slots.
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-30T23:59:59Z
+ *         description: The end date (inclusive) for filtering unavailable time slots.
+ *     responses:
+ *       '200':
+ *         description: Unavailable time slots retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 code:
+ *                   type: string
+ *                   example: UNAVAILABLE_SLOTS_RETRIEVED
+ *                 message:
+ *                   type: string
+ *                   example: Counselor unavailable time slots retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   description: List of unavailable time slots within the given range.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       start:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-15T09:00:00.000Z
+ *                       end:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-15T10:00:00.000Z
+ *                       agenda:
+ *                         type: string
+ *                         example: event
+ *       '400':
+ *         description: Bad request — missing or invalid query parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: BAD_REQUEST
+ *                 message:
+ *                   type: string
+ *                   example: Start date and end date are required.
+ *       '401':
+ *         description: Unauthorized — user not authenticated.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED
+ *                 message:
+ *                   type: string
+ *                   example: User authentication required.
+ *       '403':
+ *         description: Forbidden — only counselors can access this endpoint.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               forbidden:
+ *                 value:
+ *                   success: false
+ *                   code: FORBIDDEN
+ *                   message: Only counselors can view counselor availability.
+ *       '500':
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               serverError:
+ *                 value:
+ *                   success: false
+ *                   code: INTERNAL_SERVER_ERROR
+ *                   message: Internal server error.
+ */
+router.get('/availability/', heronAuthMiddleware, asyncHandler(counselorBookingController.getCounselorUnavailableSlots.bind(counselorBookingController)));
+
+/**
+ * @openapi
+ * /counselor/availability/department:
+ *   get:
+ *     summary: Get available counseling slots for a counselor's department
+ *     description: Retrieves available time slots for the counselor's department between a given start and end date. Only counselors can access this endpoint.
+ *     tags:
+ *       - Booking / Counselor
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         example: "2025-11-01T10:00:00Z"
+ *         description: The start of the date range to check for available slots (ISO 8601 format).
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         example: "2025-11-05T17:00:00Z"
+ *         description: The end of the date range to check for available slots (ISO 8601 format).
+ *       - in: query
+ *         name: slotDuration
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 60
+ *         example: 60
+ *         description: Duration of each slot in minutes.
+ *       - in: query
+ *         name: workStartHour
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 9
+ *         example: 9
+ *         description: The hour of the day when working hours start (0–23).
+ *       - in: query
+ *         name: workEndHour
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 17
+ *         example: 17
+ *         description: The hour of the day when working hours end (0–24).
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved available department slots.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 code:
+ *                   type: string
+ *                   example: AVAILABLE_SLOTS_RETRIEVED
+ *                 message:
+ *                   type: string
+ *                   example: Department available time slots retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       start:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-11-03T01:00:00.000Z"
+ *                       end:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-11-03T02:00:00.000Z"
+ *       400:
+ *         description: Invalid or missing query parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_DATE_RANGE
+ *                 message:
+ *                   type: string
+ *                   example: End date must be after start date.
+ *       401:
+ *         description: Unauthorized. Missing or invalid token.
+ *       403:
+ *         description: Forbidden. Only counselors can access this resource.
+ *     examples:
+ *       success:
+ *         value:
+ *           success: true
+ *           code: AVAILABLE_SLOTS_RETRIEVED
+ *           message: Department available time slots retrieved successfully.
+ *           data:
+ *             - start: "2025-11-03T01:00:00.000Z"
+ *               end: "2025-11-03T02:00:00.000Z"
+ *             - start: "2025-11-03T02:00:00.000Z"
+ *               end: "2025-11-03T03:00:00.000Z"
+ */
+router.get('/availability/department/', heronAuthMiddleware, asyncHandler(counselorBookingController.getDepartmentAvailableSlots.bind(counselorBookingController)));
 
 export default router;

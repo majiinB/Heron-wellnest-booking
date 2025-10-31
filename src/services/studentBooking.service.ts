@@ -8,6 +8,8 @@ import type { ApiResponse } from "../types/apiResponse.type.js";
 import { AppError } from "../types/appError.type.js";
 import type { Appointment } from "../models/appointments.model.js";
 import { AppDataSource } from "../config/datasource.config.js";
+import { calendarClient } from "../config/googleCalendar.config.js";
+import { logger } from "../utils/logger.util.js";
 
 /**
  * Service class for managing Booking.
@@ -569,6 +571,18 @@ export class StudentBookingService {
     return appointmentRequest;
   }
 
+  /**
+   * Retrieves all appointment requests for a specific student user.
+   * 
+   * @param userId - The unique identifier of the student user
+   * @param status - Optional filter for appointment request status. Can be:
+   *   - "pending": Requests awaiting confirmation
+   *   - "both_confirmed": Requests confirmed by both parties
+   *   - "declined": Requests that were declined
+   *   - "expired": Requests that have expired
+   * @returns A promise that resolves to an array of AppointmentRequest objects
+   * @throws May throw an error if the database query fails
+   */
   public async getAllAppointmentRequests(
     userId: string,
     status?: "pending" | "both_confirmed" | "declined" | "expired"
@@ -619,5 +633,204 @@ export class StudentBookingService {
   ): Promise<Appointment[]> {
     const appointments = await this.appointmentsRepository.getStudentAppointments(userId, startDate, endDate);
     return appointments;
+  }
+
+  /**
+   * Gets unavailable time slots for a specific counselor from the database.
+   * Returns all confirmed (non-cancelled) appointments for the counselor in the given date range.
+   * 
+   * @param counselorId - The unique identifier of the counselor
+   * @param startDate - The start date of the search range
+   * @param endDate - The end date of the search range
+   * @returns A promise that resolves to an array of time slot objects with start and end times
+   * 
+   * @remarks
+   * This only checks the database appointments table, not Google Calendar.
+   * Use this to show when a specific counselor is booked.
+   * 
+   * @example
+   * ```typescript
+   * const unavailable = await service.getCounselorUnavailableSlots(
+   *   'counselor-123',
+   *   new Date('2025-11-01'),
+   *   new Date('2025-11-30')
+   * );
+   * // Returns: [
+   * //   { start: '2025-11-01T10:00:00Z', end: '2025-11-01T11:00:00Z', agenda: 'counseling' },
+   * //   { start: '2025-11-02T14:00:00Z', end: '2025-11-02T15:00:00Z', agenda: 'meeting' }
+   * // ]
+   * ```
+   */
+  public async getCounselorUnavailableSlots(
+    counselorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<Array<{ start: Date; end: Date; agenda: string; student_email?: string }>> {
+    // Get all confirmed appointments for the counselor
+    const appointments = await this.appointmentsRepository.getCounselorAppointments(
+      counselorId,
+      startDate,
+      endDate
+    );
+
+    // Map to simple time slot format (exclude cancelled appointments)
+    return appointments
+      .filter(apt => apt.cancelled_by === null)
+      .map(apt => ({
+        start: apt.start_time,
+        end: apt.end_time,
+        agenda: apt.agenda,
+      }));
+  }
+
+  /**
+   * Gets busy time slots from the department calendar using Google Calendar FreeBusy API.
+   * Returns all busy periods (including manually added events) in the department calendar.
+   * 
+   * @param department - The department name
+   * @param startDate - The start date of the search range
+   * @param endDate - The end date of the search range
+   * @returns A promise that resolves to an array of busy time slots
+   * 
+   * @remarks
+   * This checks the Google Calendar department calendar for ALL busy periods.
+   * Useful for seeing department-wide unavailability including:
+   * - Confirmed appointments from your system
+   * - Manually added events (department meetings, holidays, etc.)
+   * 
+   * @example
+   * ```typescript
+   * const busySlots = await service.getDepartmentBusySlots(
+   *   'COLLEGE OF COMPUTING AND INFORMATION SCIENCES',
+   *   new Date('2025-11-01'),
+   *   new Date('2025-11-30')
+   * );
+   * ```
+   */
+  public async getDepartmentBusySlots(
+    department: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<Array<{ start: string; end: string }>> {
+    const calendar = await calendarClient;
+    const calendarId = this.googleCalendarRepository['getDepartmentCalendarId'](department);
+
+    try {
+      const response = await calendar.freebusy.query({
+        requestBody: {
+          timeMin: startDate.toISOString(),
+          timeMax: endDate.toISOString(),
+          items: [{ id: calendarId }],
+        },
+      });
+
+      const busyPeriods = response.data.calendars?.[calendarId]?.busy || [];
+      
+      return busyPeriods.map((period: { start?: string | null; end?: string | null }) => ({
+        start: period.start || '',
+        end: period.end || '',
+      }));
+    } catch (error) {
+      logger.error('Failed to get department busy slots:', error);
+      throw new AppError(
+        500,
+        "CALENDAR_QUERY_FAILED",
+        "Failed to retrieve department calendar busy slots.",
+        true
+      );
+    }
+  }
+
+  /**
+   * Gets available time slots for booking in a department.
+   * Generates time slots and filters out busy periods from Google Calendar.
+   * 
+   * @param department - The department name
+   * @param startDate - The start date of the search range
+   * @param endDate - The end date of the search range
+   * @param slotDurationMinutes - Duration of each time slot in minutes (default: 60)
+   * @param workStartHour - Start of work day in 24h format (default: 9)
+   * @param workEndHour - End of work day in 24h format (default: 17)
+   * @returns A promise that resolves to an array of available time slots
+   * 
+   * @remarks
+   * This method:
+   * 1. Generates time slots based on work hours
+   * 2. Checks Google Calendar for busy periods
+   * 3. Returns only available (free) slots
+   * 
+   * Useful for showing students when they can book appointments.
+   * 
+   * @example
+   * ```typescript
+   * const available = await service.getDepartmentAvailableSlots(
+   *   'COLLEGE OF COMPUTING AND INFORMATION SCIENCES',
+   *   new Date('2025-11-01'),
+   *   new Date('2025-11-07'),
+   *   60, // 1-hour slots
+   *   9,  // 9 AM start
+   *   17  // 5 PM end
+   * );
+   * // Returns: [
+   * //   { start: '2025-11-01T09:00:00Z', end: '2025-11-01T10:00:00Z' },
+   * //   { start: '2025-11-01T11:00:00Z', end: '2025-11-01T12:00:00Z' },
+   * //   ...
+   * // ]
+   * ```
+   */
+  public async getDepartmentAvailableSlots(
+    department: string,
+    startDate: Date,
+    endDate: Date,
+    slotDurationMinutes: number = 60,
+    workStartHour: number = 9,
+    workEndHour: number = 17
+  ): Promise<Array<{ start: Date; end: Date }>> {
+    // Get busy periods from Google Calendar
+    const busySlots = await this.getDepartmentBusySlots(department, startDate, endDate);
+
+    // Generate all possible time slots
+    const allSlots: Array<{ start: Date; end: Date }> = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      // Skip weekends (optional - remove if you want 7-day weeks)
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Sunday, 6 = Saturday
+        // Generate slots for this day
+        for (let hour = workStartHour; hour < workEndHour; hour++) {
+          const slotStart = new Date(currentDate);
+          slotStart.setHours(hour, 0, 0, 0);
+
+          const slotEnd = new Date(slotStart);
+          slotEnd.setMinutes(slotEnd.getMinutes() + slotDurationMinutes);
+
+          // Don't add slots that go past work end hour
+          if (slotEnd.getHours() <= workEndHour) {
+            allSlots.push({ start: slotStart, end: slotEnd });
+          }
+        }
+      }
+
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Filter out busy slots
+    const availableSlots = allSlots.filter(slot => {
+      return !busySlots.some(busy => {
+        const busyStart = new Date(busy.start);
+        const busyEnd = new Date(busy.end);
+
+        // Check if slot overlaps with busy period
+        return (
+          (slot.start >= busyStart && slot.start < busyEnd) ||
+          (slot.end > busyStart && slot.end <= busyEnd) ||
+          (slot.start <= busyStart && slot.end >= busyEnd)
+        );
+      });
+    });
+
+    return availableSlots;
   }
 }

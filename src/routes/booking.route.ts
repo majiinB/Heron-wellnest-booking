@@ -26,6 +26,21 @@ const studentBookingService = new StudentBookingService(
 );
 const studentBookingController = new StudentBookingController(studentBookingService);
 
-router.post('/', heronAuthMiddleware, asyncHandler(studentBookingController.requestAppointment.bind(studentBookingController)));
+// Appointment Request routes
+router.post('/requests/', heronAuthMiddleware, asyncHandler(studentBookingController.requestAppointment.bind(studentBookingController)));
+router.patch('/requests/:requestId/accept', heronAuthMiddleware, asyncHandler(studentBookingController.acceptAppointmentRequest.bind(studentBookingController)));
+router.patch('/requests/:requestId/decline', heronAuthMiddleware, asyncHandler(studentBookingController.declineAppointmentRequest.bind(studentBookingController)));
+router.get('/requests', heronAuthMiddleware, asyncHandler(studentBookingController.getAllAppointmentRequests.bind(studentBookingController)));
+router.get('/requests/:requestId', heronAuthMiddleware, asyncHandler(studentBookingController.getAppointmentRequests.bind(studentBookingController)));
+
+
+// Appointment routes
+router.get('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(studentBookingController.getAppointment.bind(studentBookingController)));
+router.get('/appointments', heronAuthMiddleware, asyncHandler(studentBookingController.getAllAppointments.bind(studentBookingController)));
+router.delete('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(studentBookingController.cancelAppointment.bind(studentBookingController)));
+
+// Availability routes
+router.get('/availability/counselor/:counselorId', heronAuthMiddleware, asyncHandler(studentBookingController.getCounselorUnavailableSlots.bind(studentBookingController)));
+router.get('/availability/department/:department', heronAuthMiddleware, asyncHandler(studentBookingController.getDepartmentAvailableSlots.bind(studentBookingController)));
 
 export default router;

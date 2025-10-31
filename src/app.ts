@@ -39,10 +39,10 @@ app.use(loggerMiddleware); // Custom logger middleware
 
 // Routes
 // This is a health check route
-app.get('/api/v1/booking/health', (_req, res) => {
+app.get('/api/v1/student/booking/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-app.use('/api/v1/booking', bookingRouter);
+app.use('/api/v1/student/booking', bookingRouter);
 
 
 app.use(errorMiddleware); // Custom error handling middleware

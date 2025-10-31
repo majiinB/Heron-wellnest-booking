@@ -24,14 +24,52 @@
 
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 import {corsOptions} from './config/cors.config.js'; 
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import studentBookingRouter from './routes/studentBooking.route.js'
 import counselorBookingRouter from './routes/counselorBooking.route.js';
+import { env } from './config/env.config.js';
+import fs from 'fs';
 
+const app = express();
+const isTS = fs.existsSync('./src/routes');
 
-const app : express.Express = express();
+// --- Swagger options ---
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Heron Wellnest Booking API',
+      version: '1.0.0',
+      description:"Heron Wellnest Booking API provides endpoints for managing and tracking booking activities within the app, including appointment requests, cancellations, and availability checks. This API enables secure creation, retrieval, and management of user booking data while supporting authentication and role-based access control.",
+    },
+    servers: [
+      {
+        url: `http://localhost:${env.PORT}/api/v1/booking`, 
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+  },
+  apis: [isTS? './src/routes/**/*.ts' : "./dist/routes/**/*.{js,ts}"], // 👈 path to your route files with @openapi JSDoc comments
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middlewares
 app.use(cors(corsOptions));
@@ -40,11 +78,11 @@ app.use(loggerMiddleware); // Custom logger middleware
 
 // Routes
 // This is a health check route
-app.get('/api/v1/student/booking/health', (_req, res) => {
+app.get('/api/v1/booking/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-app.use('/api/v1/student/booking', studentBookingRouter);
-app.use('/api/v1/counselor/booking', counselorBookingRouter);
+app.use('/api/v1/booking/student', studentBookingRouter);
+app.use('/api/v1/booking/counselor', counselorBookingRouter);
 
 app.use(errorMiddleware); // Custom error handling middleware
 

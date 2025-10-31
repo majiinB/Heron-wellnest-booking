@@ -27,6 +27,7 @@ const studentBookingService = new StudentBookingService(
 const studentBookingController = new StudentBookingController(studentBookingService);
 
 // Appointment Request routes
+
 router.post('/requests/', heronAuthMiddleware, asyncHandler(studentBookingController.requestAppointment.bind(studentBookingController)));
 router.patch('/requests/:requestId/accept', heronAuthMiddleware, asyncHandler(studentBookingController.acceptAppointmentRequest.bind(studentBookingController)));
 router.patch('/requests/:requestId/decline', heronAuthMiddleware, asyncHandler(studentBookingController.declineAppointmentRequest.bind(studentBookingController)));

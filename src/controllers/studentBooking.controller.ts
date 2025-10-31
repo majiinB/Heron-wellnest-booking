@@ -515,6 +515,16 @@ export class StudentBookingController {
       return;
     }
 
+    if (parseEndDate <= parseStartDate) {
+      response = {
+        success: false,
+        code: "INVALID_DATE_RANGE",
+        message: "End date must be after start date."
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     const appointments = await this.studentBookingService.getAllAppointments(userId, parseStartDate, parseEndDate);
 
     response = {

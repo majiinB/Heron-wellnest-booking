@@ -297,6 +297,16 @@ export class CounselorBookingController {
       res.status(400).json(response); return;
     }
 
+    if (parseEndDate <= parseStartDate) {
+      response = {
+        success: false,
+        code: "INVALID_DATE_RANGE",
+        message: "End date must be after start date."
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     const appointments = await this.counselorBookingService.getAllAppointments(userId, parseStartDate, parseEndDate);
     response = { success: true, code: "APPOINTMENTS_RETRIEVED", message: "Appointments retrieved successfully.", data: appointments };
     res.status(200).json(response);

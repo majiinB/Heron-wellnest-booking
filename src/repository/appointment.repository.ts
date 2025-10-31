@@ -91,7 +91,7 @@ export class AppointmentRepository {
   async getAppointmentById(appointment_id: string): Promise<Appointment | null> {
     return await this.repository.findOne({ 
       where: { appointment_id },
-      relations: ["request_id"]
+      relations: ["request"]
     });
   }
 
@@ -123,7 +123,7 @@ export class AppointmentRepository {
         student_id,
         start_time: Between(startDate, endDate)
       },
-      relations: ["request_id"],
+      relations: ["request"],
       order: { start_time: "ASC" }
     });
   }
@@ -156,7 +156,7 @@ export class AppointmentRepository {
         counselor_id,
         start_time: Between(startDate, endDate)
       },
-      relations: ["request_id"],
+      relations: ["request"],
       order: { start_time: "ASC" }
     });
   }
@@ -450,7 +450,7 @@ export class AppointmentRepository {
         start_time: MoreThanOrEqual(new Date()),
         cancelled_at: null as any
       },
-      relations: ["request_id"],
+      relations: ["request"],
       order: { start_time: "ASC" },
       take: limit
     });
@@ -479,7 +479,7 @@ export class AppointmentRepository {
         start_time: MoreThanOrEqual(new Date()),
         cancelled_at: null as any
       },
-      relations: ["request_id"],
+      relations: ["request"],
       order: { start_time: "ASC" },
       take: limit
     });
@@ -507,7 +507,7 @@ export class AppointmentRepository {
         student_id,
         end_time: LessThanOrEqual(new Date())
       },
-      relations: ["request_id"],
+      relations: ["request"],
       order: { start_time: "DESC" },
       take: limit
     });
@@ -535,7 +535,7 @@ export class AppointmentRepository {
         counselor_id,
         end_time: LessThanOrEqual(new Date())
       },
-      relations: ["request_id"],
+      relations: ["request"],
       order: { start_time: "DESC" },
       take: limit
     });

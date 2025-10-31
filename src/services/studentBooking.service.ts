@@ -662,7 +662,14 @@ export class StudentBookingService {
     endDate: Date,
   ): Promise<Appointment[]> {
     const appointments = await this.appointmentsRepository.getStudentAppointments(userId, startDate, endDate);
-    return appointments;
+
+    return appointments.map(appointment => {
+      const { request, ...rest } = appointment;
+      return {
+        ...rest,
+        request_id: request?.request_id,
+      } as AppointmentResponse;
+    });
   }
 
   /**

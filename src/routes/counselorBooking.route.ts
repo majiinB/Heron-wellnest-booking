@@ -741,11 +741,175 @@ router.patch('/requests/:requestId/decline', heronAuthMiddleware, asyncHandler(c
  *                   message: Internal server error
  */
 router.get('/requests/', heronAuthMiddleware, asyncHandler(counselorBookingController.getAllAppointmentRequests.bind(counselorBookingController)));
+
+
 router.get('/requests/:requestId', heronAuthMiddleware, asyncHandler(counselorBookingController.getAppointmentRequests.bind(counselorBookingController)));
 
 // Appointment routes
+/**
+ * @openapi
+ * /counselor/appointments/:
+ *   get:
+ *     summary: Retrieve all confirmed appointments (counselor)
+ *     description: |
+ *       Allows an authenticated counselor to retrieve all their confirmed appointments within a specific date range.
+ *       The request must include both a `startDate` and an `endDate` as ISO 8601 date strings.
+ *     tags:
+ *       - Booking / Counselor
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-01T00:00:00Z
+ *         description: The start date (inclusive) for filtering appointments.
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: 2025-11-30T23:59:59Z
+ *         description: The end date (inclusive) for filtering appointments.
+ *     responses:
+ *       '200':
+ *         description: Appointments retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 code:
+ *                   type: string
+ *                   example: APPOINTMENTS_RETRIEVED
+ *                 message:
+ *                   type: string
+ *                   example: Appointments retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       appointment_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: 846bfe36-da6d-4497-acd2-21d1062ebb56
+ *                       student_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: 6a4952ff-f93d-48ff-a8fc-8544182f69c0
+ *                       counselor_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: c5e4f2bf-af11-489a-99cf-0954c3f9f3f7
+ *                       department:
+ *                         type: string
+ *                         example: COLLEGE OF COMPUTING AND INFORMATION SCIENCES
+ *                       agenda:
+ *                         type: string
+ *                         example: event
+ *                       start_time:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-15T09:00:00.000Z
+ *                       end_time:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-11-15T10:00:00.000Z
+ *                       google_event_id:
+ *                         type: string
+ *                         example: 5ajjanuig8bd7luhgbd4e9qm7s
+ *                       status:
+ *                         type: string
+ *                         enum: [pending, both_confirmed, declined, expired]
+ *                         example: both_confirmed
+ *                       cancelled_by:
+ *                         type: string
+ *                         nullable: true
+ *                         example: null
+ *                       cancelled_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                         example: null
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-10-31T14:27:11.056Z
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2025-10-31T14:27:11.056Z
+ *                       request_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: 45826df6-6fc2-447c-82e6-73796b05e960
+ *       '400':
+ *         description: Bad request — missing or invalid query parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: BAD_REQUEST
+ *                 message:
+ *                   type: string
+ *                   example: Start date and end date are required.
+ *       '401':
+ *         description: Unauthorized — user not authenticated.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED
+ *                 message:
+ *                   type: string
+ *                   example: User authentication required.
+ *       '403':
+ *         description: Forbidden — only counselors can access this endpoint.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               forbidden:
+ *                 value:
+ *                   success: false
+ *                   code: FORBIDDEN
+ *                   message: Only counselors can view their appointments.
+ *       '500':
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               serverError:
+ *                 value:
+ *                   success: false
+ *                   code: INTERNAL_SERVER_ERROR
+ *                   message: Internal server error.
+ */
+router.get('/appointments/', heronAuthMiddleware, asyncHandler(counselorBookingController.getAllAppointments.bind(counselorBookingController)));
 router.get('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(counselorBookingController.getAppointment.bind(counselorBookingController)));
-router.get('/appointments', heronAuthMiddleware, asyncHandler(counselorBookingController.getAllAppointments.bind(counselorBookingController)));
 router.delete('/appointments/:appointmentId', heronAuthMiddleware, asyncHandler(counselorBookingController.cancelAppointment.bind(counselorBookingController)));
 
 // Availability routes

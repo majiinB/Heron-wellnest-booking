@@ -617,7 +617,7 @@ export class StudentBookingController {
   public async getDepartmentAvailableSlots(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const userId = req.user?.sub;
     const userRole = req.user?.role;
-    const { department } = req.params;
+    const department = req.user?.college_department;
     const { startDate, endDate, slotDuration, workStartHour, workEndHour } = req.query;
 
     let response: ApiResponse;

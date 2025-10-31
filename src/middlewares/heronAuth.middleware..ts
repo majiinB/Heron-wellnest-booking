@@ -26,6 +26,7 @@ export async function heronAuthMiddleware(req: AuthenticatedRequest, res: Respon
       name: payload.name!,
       sub: payload.sub!,
       role: payload.role!,
+      college_department: (payload.role !== "admin" && payload.role !== "super_admin" && typeof payload.college_department === "string") ? payload.college_department : undefined,
     };
 
     next();

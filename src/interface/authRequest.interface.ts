@@ -18,5 +18,6 @@ export interface AuthenticatedRequest extends Request {
     name: string;
     role: string;
     picture?: string;
+    college_department?: string;
   };
 }

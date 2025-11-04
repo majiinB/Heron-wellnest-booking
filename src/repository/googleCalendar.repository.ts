@@ -151,9 +151,9 @@ export class GoogleCalendarRepository {
    * 
    * @remarks
    * - Creates event in department-specific calendar
-   * - Includes attendees (student and counselor)
+   * - Student and counselor emails are included in description and extendedProperties
    * - Stores appointment metadata in extendedProperties
-   * - Does not send email invitations
+   * - Does not send email invitations or add attendees (to avoid Domain-Wide Delegation requirement)
    * 
    * @example
    * ```typescript
@@ -198,23 +198,15 @@ Appointment ID: ${eventData.appointment_id}
             dateTime: eventData.end_time.toISOString(),
             timeZone: 'Asia/Manila'
           },
-          attendees: [
-            {
-              email: eventData.student_email,
-              displayName: eventData.student_email,
-              responseStatus: 'accepted',
-            },
-            {
-              email: eventData.counselor_email,
-              displayName: eventData.counselor_email,
-              responseStatus: 'accepted',
-            },
-          ],
+          // Note: Attendees removed to avoid Domain-Wide Delegation requirement
+          // Student and counselor info is preserved in the description and extendedProperties
           extendedProperties: {
             private: {
               appointment_id: eventData.appointment_id,
               student_id: eventData.student_id,
+              student_email: eventData.student_email,
               counselor_id: eventData.counselor_id,
+              counselor_email: eventData.counselor_email,
               department: eventData.department,
               agenda: eventData.agenda,
             },
@@ -286,23 +278,15 @@ Appointment ID: ${eventData.appointment_id}
             dateTime: eventData.end_time.toISOString(),
             timeZone: 'Asia/Manila'
           },
-          attendees: [
-            {
-              email: eventData.student_email,
-              displayName: eventData.student_email,
-              responseStatus: 'accepted',
-            },
-            {
-              email: eventData.counselor_email,
-              displayName: eventData.counselor_email,
-              responseStatus: 'accepted',
-            },
-          ],
+          // Note: Attendees removed to avoid Domain-Wide Delegation requirement
+          // Student and counselor info is preserved in the description and extendedProperties
           extendedProperties: {
             private: {
               appointment_id: eventData.appointment_id,
               student_id: eventData.student_id,
+              student_email: eventData.student_email,
               counselor_id: eventData.counselor_id,
+              counselor_email: eventData.counselor_email,
               department: eventData.department,
               agenda: eventData.agenda,
             },
@@ -475,14 +459,19 @@ Appointment ID: ${eventData.appointment_id}
   }
 
   /**
-   * Gets all events where a specific user (by email) is an attendee.
+   * Gets all events where a specific user (by email) appears in the summary or description.
    * 
    * @param department - The department name
    * @param email - The user's email address
    * @param timeMin - Optional start time to filter events (defaults to now)
    * @param timeMax - Optional end time to filter events
    * @param maxResults - Maximum number of events to return (defaults to 100)
-   * @returns Array of calendar events where the user is an attendee
+   * @returns Array of calendar events where the user's email appears
+   * 
+   * @remarks
+   * Note: This method searches the summary and description since attendees are not used
+   * to avoid Domain-Wide Delegation requirements. Use `getEventsByUserId` for more
+   * accurate results using extended properties.
    * 
    * @example
    * ```typescript
@@ -510,9 +499,13 @@ Appointment ID: ${eventData.appointment_id}
         orderBy: 'startTime',
       });
 
-      // Filter events where the email is in the attendees list
+      // Filter events where the email appears in summary or description
+      // Note: Attendees are not used to avoid Domain-Wide Delegation requirement
       const filteredEvents = (response.data.items || []).filter(event => {
-        return event.attendees?.some(attendee => attendee.email === email);
+        const summary = event.summary?.toLowerCase() || '';
+        const description = event.description?.toLowerCase() || '';
+        const searchEmail = email.toLowerCase();
+        return summary.includes(searchEmail) || description.includes(searchEmail);
       });
 
       return filteredEvents;

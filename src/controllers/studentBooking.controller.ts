@@ -2,8 +2,6 @@
 import { type NextFunction, type Response} from "express";
 import { logger } from "../utils/logger.util.js";
 import type { StudentBookingService } from "../services/studentBooking.service.js";
-import { calendarClient } from "../config/googleCalendar.config.js";
-import { google } from "googleapis";
 import type { AuthenticatedRequest } from "../interface/authRequest.interface.js";
 import type { ApiResponse } from "../types/apiResponse.type.js";
 import { validate as isUuid } from "uuid";

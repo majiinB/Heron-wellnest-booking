@@ -40,7 +40,7 @@ const isTS = fs.existsSync('./src/routes');
 // --- Swagger options ---
 const swaggerOptions = {
   definition: {
-    openapi: '3.0.0',
+    openapi: '3.0.1',
     info: {
       title: 'Heron Wellnest Booking API',
       version: '1.0.0',

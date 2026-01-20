@@ -1,81 +1,105 @@
-# name: workflow
+name: workflow
 
-# on:
-#   push:
-#     branches:
-#       - staging
-#       - main
+on:
+  push:
+    branches:
+      - staging
+      - main
 
-# jobs:
-#   check:
-#     if: github.ref == 'refs/heads/staging'
-#     runs-on: ubuntu-latest
-#     container:
-#       image: node:22
-#     steps:
-#       # Setup Node.js
-#       - uses: actions/checkout@v3
+jobs:
+  check:
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    container:
+      image: node:22
+    steps:
+      # Setup Node.js
+      - uses: actions/checkout@v3
 
-#       - uses: actions/setup-node@v3
-#         with:
-#           node-version: "22"
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "20"
 
-#       # Install dependencies
-#       - run: npm ci
+      # Install dependencies
+      - run: npm ci
 
-#       # Run ESLint
-#       - run: npm run lint
+      # Run ESLint
+      - run: npm run lint
 
-#       # Run tests
-#       - run: npm test
+      # Run tests
+      - run: npm test -- src/tests/auth.test.ts
+        env:
+          JWT_SECRET: test-secret-key-for-ci-cd-testing-only-minimum-32-chars
 
-#   build-and-deploy:
-#     if: github.ref == 'refs/heads/main'
-#     runs-on: ubuntu-latest
-#     env:
-#       SERVICE_NAME: <Your-service-or-api-name>
-#       GCP_PROJECT_ID: <Your-google-cloud-project-id>
-#       REGION: <Your-chosen-region>
-#       ARTIFACT_REGISTRY_REPO: <The-name-of-your-artifact-registry-repo>
-#     steps:
-#       - uses: actions/checkout@v3
+  build-and-deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      SERVICE_NAME: hw-booking-api
+      GCP_PROJECT_ID: heron-wellnest
+      REGION: us-central1
+      ARTIFACT_REGISTRY_REPO: heron-wellnest-repo
+    steps:
+      - uses: actions/checkout@v3
 
-#       # Setup Node.js
-#       - uses: actions/setup-node@v3
-#         with:
-#           node-version: "22"
+      # Setup Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "20"
 
-#       # Install dependencies (needed for build)
-#       - run: npm ci
+      # Install dependencies (needed for build)
+      - run: npm ci
 
-#       # Run ESLint
-#       - run: npm run lint
+      # Run ESLint
+      - run: npm run lint
 
-#       # Run tests
-#       - run: npm test
+      # Run tests
+      - run: npm test -- src/tests/auth.test.ts
+        env:
+          JWT_SECRET: test-secret-key-for-ci-cd-testing-only-minimum-32-chars
 
-#       - uses: google-github-actions/auth@v1
-#         with:
-#           credentials_json: ${{ secrets.GCP_KEY }}
+      - uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_KEY }}
 
-#       # Setup gcloud CLI (optional if you want latest version)
-#       - uses: google-github-actions/setup-gcloud@v2
-#         with:
-#           project_id: ${{ env.GCP_PROJECT_ID }}
-#           version: latest
+      # Setup gcloud CLI (optional if you want latest version)
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: latest
 
-#       - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-#       # Build Docker image
-#       - run: docker build -t ${{env.REGION}}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{env.ARTIFACT_REGISTRY_REPO}}/${{ env.SERVICE_NAME }}:latest .
+      # Build Docker image
+      - run: docker build -t ${{env.REGION}}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{env.ARTIFACT_REGISTRY_REPO}}/${{ env.SERVICE_NAME }}:latest .
 
-#       # Push Docker image
-#       - run: docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO}}/${{ env.SERVICE_NAME }}:latest
+      # Push Docker image
+      - run: docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO}}/${{ env.SERVICE_NAME }}:latest
 
-#       # Deploy to Cloud Run
-#       - run: |
-#           gcloud run deploy ${{ env.SERVICE_NAME }} \
-#             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO}}/${{ env.SERVICE_NAME }}:latest \
-#             --region ${{ env.REGION }} \
-#             --platform managed \
-#             --allow-unauthenticated
+      # Debug: Check variables
+      - run: |
+          echo "JWT_ALGORITHM=${{ vars.JWT_ALGORITHM }}"
+
+      # Deploy to Cloud Run
+      - run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO}}/${{ env.SERVICE_NAME }}:latest \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --update-env-vars NODE_ENV=${{ vars.NODE_ENV }} \
+            --update-env-vars DB_USER=${{ vars.DB_USER }} \
+            --update-env-vars DB_NAME=${{ vars.DB_NAME }} \
+            --update-env-vars DB_HOST=${{ vars.DB_HOST }} \
+            --update-env-vars DB_PORT=${{ vars.DB_PORT }} \
+            --update-env-vars JWT_ISSUER=${{ vars.JWT_ISSUER }} \
+            --update-env-vars JWT_AUDIENCE=${{ vars.JWT_AUDIENCE }} \
+            --update-env-vars JWT_ALGORITHM=${{ vars.JWT_ALGORITHM }} \
+            --update-env-vars CCIS_CALENDAR_ID=${{ vars.CCIS_CALENDAR_ID }} \
+            --set-secrets DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest \
+            --timeout=300 \
+            --concurrency=20 \
+            --min-instances=0 \
+            --max-instances=3 \
+            --cpu-boost

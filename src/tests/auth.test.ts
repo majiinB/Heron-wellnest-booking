@@ -14,12 +14,12 @@ import app from "../app.js";
  * 
  * @author Arthur M. Artugue
  * @created 2025-08-19
- * @updated 2025-08-19
+ * @updated 2026-01-20
  */
 
 describe("Health Check", () => {
   it("should return status ok", async () => {
-    const res = await request(app).get("/api/v1/auth/health")
+    const res = await request(app).get("/api/v1/booking/health")
     .set("origin", "https://production-domain.com");
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ status: "ok" });

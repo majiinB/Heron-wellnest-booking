@@ -1,17 +1,17 @@
 import type { CorsOptions } from "cors";
 import { env } from "./env.config.js";
 
-const staticAllowlist = [
-  "https://wellnest-smoky.vercel.app",
-];
+// const staticAllowlist = [
+//   "https://wellnest-smoky.vercel.app",
+// ];
 
-// // Parse comma-separated env list (exact origin strings)
-// const envAllowlist = (env.CORS_ALLOWED_ORIGINS ?? "")
-//   .split(",")
-//   .map(s => s.trim())
-//   .filter(Boolean);
+// Parse comma-separated env list (exact origin strings)
+const envAllowlist = (env.CORS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
 
-const allowlist = new Set<string>([...staticAllowlist]);
+const allowlist = new Set<string>([...envAllowlist]);
 
 function isLocalhostOrigin(origin: string): boolean {
   try {
@@ -39,7 +39,7 @@ function isLocalhostOrigin(origin: string): boolean {
  *  
  * @author Arthur M. Artugue
  * @created 2025-08-17
- * @updated 2025-08-20
+ * @updated 2025-03-04
 */
 export const corsOptions: CorsOptions = {
   origin: (origin: string | undefined, callback) => {
@@ -57,9 +57,9 @@ export const corsOptions: CorsOptions = {
     }
 
     // Optionally allow localhost to hit prod (comment out if you don’t want this)
-    if (isLocalhostOrigin(origin)) {
-      return callback(null, true);
-    }
+    // if (isLocalhostOrigin(origin)) {
+    //   return callback(null, true);
+    // }
 
     return callback(new Error("Not allowed by CORS"), false);
   },

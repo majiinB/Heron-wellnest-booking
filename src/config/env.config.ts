@@ -61,6 +61,9 @@ export const envSchema = z.object({
   CCSE_CALENDAR_ID: z.string().optional(),
   CET_CALENDAR_ID: z.string().optional(),
   CTHM_CALENDAR_ID: z.string().optional(),
+
+  // CORS
+  CORS_ALLOWED_ORIGINS: z.string().min(1, "CORS_ALLOWED_ORIGINS is required"),
 }).superRefine((env, ctx) => {
   if (env.JWT_ALGORITHM === "HS256" && !env.JWT_SECRET) {
     ctx.addIssue({

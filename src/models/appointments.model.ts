@@ -67,6 +67,9 @@ export class Appointment {
   @Column({ type: "enum", enum: ["student", "counselor"], nullable: true })
   cancelled_by!: "student" | "counselor" | null;
 
+  @Column({ type: "text", nullable: true })
+  reason!: string | null;
+
   @Column({ type: "timestamptz", nullable: true })
   cancelled_at!: Date | null;
 

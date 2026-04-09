@@ -68,6 +68,9 @@ export class AppointmentRequest {
   @Column({ type: "enum", enum: ["pending", "both_confirmed", "declined", "expired"] })
   status!: "pending" | "both_confirmed" | "declined" | "expired";
 
+  @Column({ type: "text", nullable: true })
+  reason!: string | null;
+
   @Column({ type: "timestamptz", nullable: true })
   finalized_at!: Date | null;
 

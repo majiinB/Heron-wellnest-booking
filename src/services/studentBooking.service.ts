@@ -10,6 +10,8 @@ import type { Appointment } from "../models/appointments.model.js";
 import { AppDataSource } from "../config/datasource.config.js";
 import { calendarClient } from "../config/googleCalendar.config.js";
 import { logger } from "../utils/logger.util.js";
+import { publishMessage } from "../utils/pubsub.util.js";
+import { env } from "../config/env.config.js";
 
 type AppointmentResponse = Appointment & { request_id: string };
 
@@ -214,6 +216,20 @@ export class StudentBookingService {
       proposed_start: proposedStart,
       proposed_end: proposedEnd,
     });
+
+    try {
+      // Call pubsub notification for new appoinment request to notify the student
+      await publishMessage(env.PUBSUB_NOTIFICATION_TOPIC, {
+        userId: counselorId,
+        type: "system_alerts",
+        title: "An appointment request has been made for you",
+        content: `You have a new appointment request from ${studentDetails.email} for ${agenda} on ${proposedStart.toLocaleString()}. Please log in to your account to accept or decline the request.`,
+        sendEmail: true,
+        sendInApp: true,
+      });
+    } catch (error) {
+      logger.error("Failed to publish pubsub message for new appointment request:", error);
+    }
 
     return appointmentRequest;
   }

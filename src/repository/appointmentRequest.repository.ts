@@ -209,7 +209,8 @@ export class AppointmentRequestRepository {
   async updateStudentResponseWithManager(
   manager: EntityManager,
   request_id: string,
-  response: "accepted" | "declined"
+  response: "accepted" | "declined",
+  reason: string = ""
 ): Promise<AppointmentRequest | null> {
   const repo = manager.getRepository(AppointmentRequest);
   const request = await repo.findOne({ where: { request_id } });
@@ -224,6 +225,7 @@ export class AppointmentRequestRepository {
   if (response === "declined") {
     request.status = "declined";
     request.finalized_at = new Date();
+    request.reason = reason;
   } else if (request.counselor_response === "accepted") {
     request.status = "both_confirmed";
     request.finalized_at = new Date();
@@ -233,7 +235,8 @@ export class AppointmentRequestRepository {
 }
 async updateStudentResponse(
     request_id: string,
-    response: "accepted" | "declined"
+  response: "accepted" | "declined",
+  reason: string = ""
   ): Promise<AppointmentRequest | null> {
     const request = await this.repository.findOne({ where: { request_id } });
     
@@ -247,6 +250,7 @@ async updateStudentResponse(
     if (response === "declined") {
       request.status = "declined";
       request.finalized_at = new Date();
+      request.reason = reason;
     } else if (request.counselor_response === "accepted") {
       request.status = "both_confirmed";
       request.finalized_at = new Date();
@@ -273,7 +277,8 @@ async updateStudentResponse(
   async updateCounselorResponseWithManager(
   manager: EntityManager,
   request_id: string,
-  response: "accepted" | "declined"
+  response: "accepted" | "declined",
+  reason: string = ""
 ): Promise<AppointmentRequest | null> {
   const repo = manager.getRepository(AppointmentRequest);
   const request = await repo.findOne({ where: { request_id } });
@@ -288,6 +293,7 @@ async updateStudentResponse(
   if (response === "declined") {
     request.status = "declined";
     request.finalized_at = new Date();
+    request.reason = reason;
   } else if (request.student_response === "accepted") {
     request.status = "both_confirmed";
     request.finalized_at = new Date();
@@ -297,7 +303,8 @@ async updateStudentResponse(
 }
 async updateCounselorResponse(
     request_id: string,
-    response: "accepted" | "declined"
+    response: "accepted" | "declined",
+    reason: string = ""
   ): Promise<AppointmentRequest | null> {
     const request = await this.repository.findOne({ where: { request_id } });
     
@@ -311,6 +318,7 @@ async updateCounselorResponse(
     if (response === "declined") {
       request.status = "declined";
       request.finalized_at = new Date();
+      request.reason = reason;
     } else if (request.student_response === "accepted") {
       request.status = "both_confirmed";
       request.finalized_at = new Date();

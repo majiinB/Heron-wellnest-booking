@@ -492,7 +492,8 @@ export class StudentBookingService {
    */
   public async declineAppointmentRequest(
     userId: string,
-    requestId: string
+    requestId: string,
+    reason: string
   ): Promise<AppointmentRequest> {
     // Fetch the appointment request
     const appointmentRequest = await this.appointmentRequestsRepository.getRequestById(requestId);
@@ -529,7 +530,8 @@ export class StudentBookingService {
     // Update the student's response to declined
     const updatedRequest = await this.appointmentRequestsRepository.updateStudentResponse(
       requestId,
-      "declined"
+      "declined",
+      reason
     );
 
     if (!updatedRequest) {
@@ -539,6 +541,20 @@ export class StudentBookingService {
         "Failed to update the appointment request status.",
         true
       );
+    }
+
+    try {
+      // Call pubsub notification for new appoinment request to notify the student
+      await publishMessage(env.PUBSUB_NOTIFICATION_TOPIC, {
+        userId: updatedRequest.counselor_id,
+        type: "system_alerts",
+        title: "Your Appointment Request Has Been Declined",
+        content: `Your appointment request for ${updatedRequest.agenda} on ${updatedRequest.proposed_start.toLocaleString()} has been declined by the student.\n\nReason: ${updatedRequest.reason ?? "No reason provided"}\n\nPlease log in to your account for more details.`,
+        sendEmail: true,
+        sendInApp: true,
+      });
+    } catch (error) {
+      logger.error("Failed to publish pubsub message for declining appointment request:", error);
     }
 
     return updatedRequest;

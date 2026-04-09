@@ -234,6 +234,7 @@ export class StudentBookingController {
     const userId = req.user?.sub;
     const userRole = req.user?.role;
     const { requestId } = req.params;
+    const { reason } = req.body || {};
 
     let response: ApiResponse;
 
@@ -268,9 +269,20 @@ export class StudentBookingController {
       return;
     }
 
+    if (!reason) {
+      response = {
+        success: false,
+        code: "MISSING_REASON",
+        message: "Reason is required."
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     const appointmentData = await this.studentBookingService.declineAppointmentRequest(
       userId,
-      requestId
+      requestId,
+      reason
     );
 
     response = {

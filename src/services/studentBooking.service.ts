@@ -435,6 +435,20 @@ export class StudentBookingService {
 
         // Commit transaction - all operations succeeded
         await queryRunner.commitTransaction();
+
+        try {
+          // Call pubsub notification for new appoinment request to notify the student
+          await publishMessage(env.PUBSUB_NOTIFICATION_TOPIC, {
+            userId: updatedRequest.counselor_id,
+            type: "system_alerts",
+            title: "Your Appointment Request Has Been Accepted",
+            content: `Your appointment request for ${updatedRequest.agenda} on ${updatedRequest.proposed_start.toLocaleString()} has been accepted by the student. The appointment is now confirmed. Please log in to your account for more details.`,
+            sendEmail: true,
+            sendInApp: true,
+          });
+        } catch (error) {
+          logger.error("Failed to publish pubsub message for accepting appointment request:", error);
+        }
         
         const { request, ...rest } = appointment;
         return {

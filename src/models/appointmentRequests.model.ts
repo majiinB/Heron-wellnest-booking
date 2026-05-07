@@ -21,6 +21,8 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
  * @property student_response - The student's response to the request (pending, accepted, declined).
  * @property counselor_response - The counselor's response to the request (pending, accepted, declined).
  * @property status - The overall status of the request (pending, both_confirmed, declined, expired).
+ * @property creation_reason - The reason provided when creating the appointment request (optional).
+ * @property reason - The reason provided for declining the appointment request (optional).
  * @property finalized_at - The timestamp when the request was finalized (optional).
  * @property created_at - The timestamp when the request was created.
  * @property updated_at - The timestamp when the request was last updated.
@@ -67,6 +69,9 @@ export class AppointmentRequest {
 
   @Column({ type: "enum", enum: ["pending", "both_confirmed", "declined", "expired"] })
   status!: "pending" | "both_confirmed" | "declined" | "expired";
+
+  @Column({ type: "text", nullable: true })
+  creation_reason!: string | null;
 
   @Column({ type: "text", nullable: true })
   reason!: string | null;

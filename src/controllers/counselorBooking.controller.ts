@@ -49,7 +49,7 @@ export class CounselorBookingController {
   public async requestAppointment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const userId = req.user?.sub;
     const role = req.user?.role;
-    const { agenda, studentId, proposedStart, proposedEnd } = req.body || {};
+    const { agenda, studentId, proposedStart, proposedEnd, creationReason } = req.body || {};
     let response: ApiResponse;
 
     if (!userId) {
@@ -105,7 +105,7 @@ export class CounselorBookingController {
     }
 
     const appointmentRequestData = await this.counselorBookingService.requestAppointment(
-      userId, agenda, studentId, startDate, endDate
+      userId, agenda, studentId, startDate, endDate, creationReason
     );
     response = { success: true, code: "APPOINTMENT_REQUESTED", message: "Appointment request created successfully.", data: appointmentRequestData };
     res.status(201).json(response);

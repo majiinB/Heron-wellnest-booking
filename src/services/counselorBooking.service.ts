@@ -85,6 +85,7 @@ export class CounselorBookingService {
    * @param studentId - The unique identifier of the student for the appointment
    * @param proposedStart - The proposed start date and time for the appointment
    * @param proposedEnd - The proposed end date and time for the appointment
+   * @param creationReason - Optional reason for creating the appointment request
    * 
    * @returns A Promise that resolves to the created AppointmentRequest object
    * 
@@ -102,7 +103,8 @@ export class CounselorBookingService {
    *   'routine_interview',
    *   'student-456',
    *   new Date('2024-01-15T10:00:00Z'),
-   *   new Date('2024-01-15T11:00:00Z')
+   *   new Date('2024-01-15T11:00:00Z'),
+   *   'Scheduled routine check-in'
    * );
    * ```
    */
@@ -111,7 +113,8 @@ export class CounselorBookingService {
     agenda: "counseling" | "meeting" | "routine_interview" | "event", 
     studentId: string,
     proposedStart: Date,
-    proposedEnd: Date
+    proposedEnd: Date,
+    creationReason?: string
   ): Promise<AppointmentRequest> {
     // Validate time range
     if (proposedEnd <= proposedStart) {

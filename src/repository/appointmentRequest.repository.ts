@@ -54,9 +54,16 @@ export class AppointmentRequestRepository {
     agenda: "counseling" | "meeting" | "routine_interview" | "event";
     proposed_start: Date;
     proposed_end: Date;
+    creation_reason?: string | null;
   }): Promise<AppointmentRequest> {
     const request = this.repository.create({
-      ...data,
+      student_id: data.student_id,
+      counselor_id: data.counselor_id,
+      department: data.department,
+      agenda: data.agenda,
+      proposed_start: data.proposed_start,
+      proposed_end: data.proposed_end,
+      creation_reason: data.creation_reason || null,
       proposed_by: "student",
       created_by: "student",
       student_response: "accepted", // Student auto-accepts their own request
@@ -97,9 +104,16 @@ export class AppointmentRequestRepository {
     agenda: "counseling" | "meeting" | "routine_interview" | "event";
     proposed_start: Date;
     proposed_end: Date;
+    creation_reason?: string | null;
   }): Promise<AppointmentRequest> {
     const request = this.repository.create({
-      ...data,
+      student_id: data.student_id,
+      counselor_id: data.counselor_id,
+      department: data.department,
+      agenda: data.agenda,
+      proposed_start: data.proposed_start,
+      proposed_end: data.proposed_end,
+      creation_reason: data.creation_reason || null,
       proposed_by: "counselor",
       created_by: "counselor",
       student_response: "pending",

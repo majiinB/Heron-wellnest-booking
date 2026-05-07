@@ -48,7 +48,7 @@ export class StudentBookingController {
 
   public async requestAppointment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> { 
     const userId = req.user?.sub;
-    const { agenda, counselorId, proposedStart, proposedEnd } = req.body || {};
+    const { agenda, counselorId, proposedStart, proposedEnd, creationReason } = req.body || {};
 
     let response: ApiResponse;
 
@@ -154,7 +154,8 @@ export class StudentBookingController {
       agenda,
       counselorId,
       startDate,
-      endDate
+      endDate,
+      creationReason
     );
 
     response = {
